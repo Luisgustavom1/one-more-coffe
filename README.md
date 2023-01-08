@@ -1,4 +1,6 @@
-# one-more-coffee README
+# One More Coffee README
+
+Vscode extension to count how many cups of coffee you drink while programming
 
 This is the README for your extension "one-more-coffee". After writing up a brief description, we recommend including the following sections.
 
