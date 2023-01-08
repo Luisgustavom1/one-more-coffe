@@ -27,8 +27,8 @@
       "activitybar": [
         {
           "id": "one-more-coffee",
-          "title": "One more coffee icon",
-          "icon": "media/coffee-icon.svg"
+          "title": "One more coffee",
+          "icon": "media/coffee-icon.png"
         }
       ]
     },
