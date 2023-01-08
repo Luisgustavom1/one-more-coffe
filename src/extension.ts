@@ -10,12 +10,21 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(CoffeesViewProvider.viewType, provider)
 	);
+
+	provider.view?.onDidReceiveMessage(message => {
+		switch (message.command) {
+			case 'incrementCoffee':
+				provider.incrementCoffee();
+		}
+	});
 }
 
 class CoffeesViewProvider implements vscode.WebviewViewProvider {
+	public view?: vscode.Webview;
+	private _coffeesCountInYear = 0;
+	private _coffeesCountToday = 0;
 	public static readonly viewType = VIEWS.oneMoreCoffee;
 	private readonly _extensionUri: vscode.Uri;
-	private coffeesCount = 0;
 
 	constructor(
 		extensionUri: vscode.Uri
@@ -23,14 +32,21 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		this._extensionUri = extensionUri;
 	}
 
-	public resolveWebviewView(webviewView: vscode.WebviewView) {
+	public resolveWebviewView(webviewView: vscode.WebviewView, ctx: vscode.WebviewViewResolveContext<{ coffeesInYear: number, coffeesToday: number }>) {
+		this.view = webviewView.webview;
 		webviewView.webview.options = {
 			enableScripts: true
 		};
+		this._coffeesCountToday = ctx.state?.coffeesToday || 0;
+		this._coffeesCountInYear = ctx.state?.coffeesInYear || 0;
+
 		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 	}
 
 	private _getHtmlForWebview(webview: vscode.Webview) {
+		const scriptMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'js', 'main.js');
+		const scriptMain = webview.asWebviewUri(scriptMainPath);
+		
 		const stylesMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'styles.css');
 		const stylesMain = webview.asWebviewUri(stylesMainPath);
 
@@ -47,27 +63,26 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 				</head>
 				<body>
 					<main>
-						<h1>My quantity of coffees today is ${this.coffeesCount}</h1>
+						<h1>Coffees brewed today: <strong class="today-counting-coffees">${this._coffeesCountToday}</strong></h1>
 						<img alt="First coffee icon" src="https://www.gifcen.com/wp-content/uploads/2022/08/coffee-gif.gif" />
+						<span>
+							<p>Coffees brewed in ${new Date().getFullYear()}: 
+								<strong class="year-counting-coffees">${this._coffeesCountInYear}</strong>
+							</p>
+						</span>
 						<button class='button add-coffee'>
 							Drink one more coffee
 						</button>
 					</main>
 
-					<script>
-						const buttonAddCoffee = document.querySelector('.add-coffee');
-
-						buttonAddCoffee.addEventListener('click', function (e) {
-							console.log("oioio");
-							incrementCoffee();
-						});
-					</script>
+					<script src="${scriptMain}"></script>
 				</body>
 			</html>
 		`;
 	}
 
 	public incrementCoffee() {
-		this.coffeesCount = this.coffeesCount + 1;
+		this._coffeesCountInYear = this._coffeesCountInYear + 1;
+		this._coffeesCountToday = this._coffeesCountToday + 1;
 	}
 }
