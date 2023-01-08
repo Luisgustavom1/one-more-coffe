@@ -9,7 +9,11 @@ buttonAddCoffeeEl.addEventListener('click', function () {
   const coffeesTodayUpdated =  previousState.coffeesToday + 1; 
   const coffeesInYearUpdated =  previousState.coffeesInYear + 1; 
 
-  vscode.setState({ coffeesToday: coffeesTodayUpdated, coffeesInYear: coffeesInYearUpdated });
+  vscode.setState({ 
+    coffeesToday: coffeesTodayUpdated, 
+    coffeesInYear: coffeesInYearUpdated,
+    date: new Date().toISOString() 
+  });
 
   todayCountsCoffeeEl.textContent = coffeesTodayUpdated;
   yearCountsCoffeeEl.textContent = coffeesInYearUpdated;

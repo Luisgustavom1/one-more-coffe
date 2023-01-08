@@ -11,6 +11,8 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.registerWebviewViewProvider(CoffeesViewProvider.viewType, provider)
 	);
 
+	provider.resetIfADayHasPassed();
+
 	provider.view?.onDidReceiveMessage(message => {
 		switch (message.command) {
 			case 'incrementCoffee':
@@ -26,9 +28,11 @@ export function activate(context: vscode.ExtensionContext) {
 class CoffeesViewProvider implements vscode.WebviewViewProvider {
 	public view?: vscode.Webview;
 	public static readonly viewType = VIEWS.oneMoreCoffee;
+	private readonly _extensionUri: vscode.Uri;
+
 	private _coffeesCountInYear = 0;
 	private _coffeesCountToday = 0;
-	private readonly _extensionUri: vscode.Uri;
+	private _date: string | null = null;
 
 	constructor(
 		extensionUri: vscode.Uri
@@ -36,7 +40,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		this._extensionUri = extensionUri;
 	}
 
-	public resolveWebviewView(webviewView: vscode.WebviewView, ctx: vscode.WebviewViewResolveContext<{ coffeesInYear: number, coffeesToday: number }>) {
+	public resolveWebviewView(webviewView: vscode.WebviewView, ctx: vscode.WebviewViewResolveContext<{ coffeesInYear: number, coffeesToday: number, date: string | null }>) {
 		this.view = webviewView.webview;
 		
 		webviewView.webview.options = {
@@ -44,6 +48,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		};
 		this._coffeesCountToday = ctx.state?.coffeesToday || 0;
 		this._coffeesCountInYear = ctx.state?.coffeesInYear || 0;
+		this._date = ctx.state?.date || null;
 
 		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 	}
@@ -93,6 +98,16 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		this._coffeesCountToday = this._coffeesCountToday + 1;
 	}
 
+	public resetIfADayHasPassed() {
+		const today = new Date();
+		if (!this._date) {
+			return;
+		}
+		if (today.getDay() !== new Date(this._date).getDay()) {
+			this.reset();
+		}
+	}
+
 	public reset() {
 		if (!this.view) {
 			return;
@@ -101,7 +116,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		this._coffeesCountToday = 0;
 		this.view.html = this._getHtmlForWebview(this.view, `
 			<script>
-				vscode.setState({ coffeesToday: 0, coffeesInYear: 0 });
+				vscode.setState({ coffeesToday: 0, coffeesInYear: 0, date: null });
 			</script>
 		`);
 	}
