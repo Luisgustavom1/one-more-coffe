@@ -110,11 +110,10 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	public resetIfAYearHasPassed() {
-		const today = new Date();
 		if (!this._date) {
 			return;
 		}
-		if (today.getFullYear() !== new Date(this._date).getFullYear()) {
+		if (new Date().getFullYear() !== new Date(this._date).getFullYear()) {
 			this.reset();
 		}
 	}
