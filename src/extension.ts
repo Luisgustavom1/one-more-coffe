@@ -12,6 +12,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	provider.resetIfADayHasPassed();
+	provider.resetIfAYearHasPassed();
 
 	provider.view?.onDidReceiveMessage(message => {
 		switch (message.command) {
@@ -104,6 +105,16 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 			return;
 		}
 		if (today.getDay() !== new Date(this._date).getDay()) {
+			this.reset();
+		}
+	}
+
+	public resetIfAYearHasPassed() {
+		const today = new Date();
+		if (!this._date) {
+			return;
+		}
+		if (today.getFullYear() !== new Date(this._date).getFullYear()) {
 			this.reset();
 		}
 	}
