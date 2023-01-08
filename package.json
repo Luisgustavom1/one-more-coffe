@@ -11,16 +11,16 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:one-more-coffee.helloWorld",
+    "onCommand:one-more-coffee.reset-count",
     "onWebviewPanel:oneMoreCoffee"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-				"command": "one-more-coffee.show",
-				"title": "Show Testing",
-				"category": "Test"
+				"command": "one-more-coffee.reset-count",
+				"title": "Reset coffees count",
+				"category": "One more coffee"
 			}
     ],
     "viewsContainers": {

@@ -17,13 +17,19 @@ export function activate(context: vscode.ExtensionContext) {
 				provider.incrementCoffee();
 		}
 	});
+
+	context.subscriptions.push(vscode.commands.registerCommand('one-more-coffee.reset-count', () => {
+		provider.reset();
+		context.globalState.update('coffeesToday', 0);
+		context.globalState.update('coffeesInYear', 0);
+	}));
 }
 
 class CoffeesViewProvider implements vscode.WebviewViewProvider {
 	public view?: vscode.Webview;
+	public static readonly viewType = VIEWS.oneMoreCoffee;
 	private _coffeesCountInYear = 0;
 	private _coffeesCountToday = 0;
-	public static readonly viewType = VIEWS.oneMoreCoffee;
 	private readonly _extensionUri: vscode.Uri;
 
 	constructor(
@@ -84,5 +90,14 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 	public incrementCoffee() {
 		this._coffeesCountInYear = this._coffeesCountInYear + 1;
 		this._coffeesCountToday = this._coffeesCountToday + 1;
+	}
+
+	public reset() {
+		if (!this.view) {
+			return;
+		};
+		this._coffeesCountInYear = 0;
+		this._coffeesCountToday = 0;
+		this.view.html = this._getHtmlForWebview(this.view);
 	}
 }
