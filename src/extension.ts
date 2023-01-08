@@ -20,8 +20,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(vscode.commands.registerCommand('one-more-coffee.reset-count', () => {
 		provider.reset();
-		context.globalState.update('coffeesToday', 0);
-		context.globalState.update('coffeesInYear', 0);
 	}));
 }
 
@@ -40,6 +38,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 
 	public resolveWebviewView(webviewView: vscode.WebviewView, ctx: vscode.WebviewViewResolveContext<{ coffeesInYear: number, coffeesToday: number }>) {
 		this.view = webviewView.webview;
+		
 		webviewView.webview.options = {
 			enableScripts: true
 		};
@@ -49,7 +48,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 	}
 
-	private _getHtmlForWebview(webview: vscode.Webview) {
+	private _getHtmlForWebview(webview: vscode.Webview, script?: string) {
 		const scriptMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'js', 'main.js');
 		const scriptMain = webview.asWebviewUri(scriptMainPath);
 		
@@ -82,6 +81,8 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 					</main>
 
 					<script src="${scriptMain}"></script>
+
+					${script ? script : ''}
 				</body>
 			</html>
 		`;
@@ -98,6 +99,10 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		};
 		this._coffeesCountInYear = 0;
 		this._coffeesCountToday = 0;
-		this.view.html = this._getHtmlForWebview(this.view);
+		this.view.html = this._getHtmlForWebview(this.view, `
+			<script>
+				vscode.setState({ coffeesToday: 0, coffeesInYear: 0 });
+			</script>
+		`);
 	}
 }
