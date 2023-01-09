@@ -8,7 +8,11 @@ export function activate(context: vscode.ExtensionContext) {
 	const provider = new CoffeesViewProvider(context.extensionUri);
 
 	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(CoffeesViewProvider.viewType, provider)
+		vscode.window.registerWebviewViewProvider(CoffeesViewProvider.viewType, provider, {
+			webviewOptions: {
+				retainContextWhenHidden: true
+			}
+		})
 	);
 
 	provider.resetIfADayHasPassed();
@@ -22,7 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(vscode.commands.registerCommand('one-more-coffee.reset-count', () => {
-		provider.reset();
+		provider.resetAll();
 	}));
 }
 
@@ -97,15 +101,23 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 	public incrementCoffee() {
 		this._coffeesCountInYear = this._coffeesCountInYear + 1;
 		this._coffeesCountToday = this._coffeesCountToday + 1;
+		if (!this._date) {
+			this._date = new Date().toISOString();
+		}
 	}
 
 	public resetIfADayHasPassed() {
 		const today = new Date();
-		if (!this._date) {
+		if (!this._date || !this.view) {
 			return;
 		}
 		if (today.getDay() !== new Date(this._date).getDay()) {
-			this.reset();
+			this._coffeesCountToday = 0;
+			this.view.html = this._getHtmlForWebview(this.view, `
+				<script>
+					vscode.setState({ coffeesToday: 0, date: null });
+				</script>
+			`);
 		}
 	}
 
@@ -114,11 +126,11 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 			return;
 		}
 		if (new Date().getFullYear() !== new Date(this._date).getFullYear()) {
-			this.reset();
+			this.resetAll();
 		}
 	}
 
-	public reset() {
+	public resetAll() {
 		if (!this.view) {
 			return;
 		};

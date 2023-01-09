@@ -5,7 +5,7 @@ const yearCountsCoffeeEl = document.querySelector('.year-counting-coffees');
 const vscode = acquireVsCodeApi();
 
 buttonAddCoffeeEl.addEventListener('click', function () {    
-  const previousState = vscode.getState() || { coffeesToday: 0, coffeesInYear: 0 };
+  const previousState = vscode.getState() || { coffeesToday: 0, coffeesInYear: 0, date: null };
 
   const coffeesTodayUpdated =  previousState.coffeesToday + 1; 
   const coffeesInYearUpdated =  previousState.coffeesInYear + 1; 
