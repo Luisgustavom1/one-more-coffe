@@ -4,8 +4,6 @@ Vscode extension to count how many cups of coffee you drink while programming
 
 This extension is just for fun
 
-#
-
 ## How it works
 
 One more coffee will add one more icon to your sidebar.
