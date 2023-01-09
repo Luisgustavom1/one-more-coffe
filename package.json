@@ -2,13 +2,19 @@
   "name": "one-more-coffee",
   "publisher": "Luisao",
   "displayName": "One more coffee",
-  "description": "To count your coffees",
-  "version": "0.0.1",
+  "description": "This a simple vscode extension to count how many cups of coffee you drink while programming",
+  "icon": "media/images/without-coffee.jpeg",
+  "repository": { 
+    "type": "git", 
+    "url": "https://github.com/Luisgustavom1/one-more-coffe" 
+  },
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
     "Themes",
+    "Snippets",
     "Other"
   ],
   "activationEvents": [
@@ -29,7 +35,7 @@
         {
           "id": "one-more-coffee",
           "title": "One more coffee",
-          "icon": "media/coffee-icon.png"
+          "icon": "media/images/coffee-icon.png"
         }
       ]
     },
