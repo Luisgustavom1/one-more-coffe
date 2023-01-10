@@ -115,7 +115,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 			this._coffeesCountToday = 0;
 			this.view.html = this._getHtmlForWebview(this.view, `
 				<script>
-					vscode.setState({ coffeesToday: 0, date: null });
+					vscode.setState({ coffeesToday: 0 });
 				</script>
 			`);
 		}
