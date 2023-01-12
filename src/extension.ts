@@ -15,9 +15,6 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	provider.resetIfADayHasPassed();
-	provider.resetIfAYearHasPassed();
-
 	provider.view?.onDidReceiveMessage(message => {
 		switch (message.command) {
 			case 'incrementCoffee':
@@ -56,6 +53,9 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		this._date = ctx.state?.date || null;
 
 		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+		this.resetIfADayHasPassed();
+		this.resetIfAYearHasPassed();
 	}
 
 	private _getHtmlForWebview(webview: vscode.Webview, script?: string) {
@@ -89,10 +89,10 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 							Drink one more coffee
 						</button>
 					</main>
-
+					
 					<script src="${scriptMain}"></script>
-
-					${script ? script : ''}
+					
+					${script || ""}
 				</body>
 			</html>
 		`;
@@ -115,7 +115,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 			this._coffeesCountToday = 0;
 			this.view.html = this._getHtmlForWebview(this.view, `
 				<script>
-					vscode.setState({ coffeesToday: 0 });
+					vscode.setState({ coffeesToday: 0, coffeesInYear: ${this._coffeesCountInYear}, date: "${this._date}" });
 				</script>
 			`);
 		}
