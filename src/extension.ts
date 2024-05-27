@@ -115,10 +115,10 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		if (today.getDay() !== new Date(this._state.date).getDay()) {
 			this._state.coffeesInYear = 0;
 			this.view.html = this._getHtmlForWebview(this.view, `
-			<script>
-				vscode.setState({ coffeesToday: 0, coffeesInYear: ${this._state.coffeesToday}, date: "${this._state.date}" });
-			</script>
-		`);		
+				<script>
+					vscode.setState({ coffeesToday: 0, coffeesInYear: ${this._state.coffeesInYear}, date: "${this._state.date}" });
+				</script>
+			`);		
 	}
 	}
 
@@ -138,9 +138,9 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		this._state.coffeesToday = 0;
 		this._state.coffeesInYear = 0;
 		this.view.html = this._getHtmlForWebview(this.view, `
-		<script>
-			vscode.setState({ coffeesToday: 0, coffeesInYear: 0, date: null });
-		</script>
-	`);	
+			<script>
+				vscode.setState({ coffeesToday: 0, coffeesInYear: 0, date: null });
+			</script>
+		`);	
 	}
 }
