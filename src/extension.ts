@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { OneMoreCoffeeState } from './model';
 
 const VIEWS = {
 	'oneMoreCoffee': 'coffees-count'
@@ -32,9 +33,11 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 	public static readonly viewType = VIEWS.oneMoreCoffee;
 	private readonly _extensionUri: vscode.Uri;
 
-	private _coffeesCountInYear = 0;
-	private _coffeesCountToday = 0;
-	private _date: string | null = null;
+	private _state: OneMoreCoffeeState = {
+		coffeesToday: 0,
+		coffeesInYear: 0,
+		date: null
+	};
 
 	constructor(
 		extensionUri: vscode.Uri
@@ -42,15 +45,13 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		this._extensionUri = extensionUri;
 	}
 
-	public resolveWebviewView(webviewView: vscode.WebviewView, ctx: vscode.WebviewViewResolveContext<{ coffeesInYear: number, coffeesToday: number, date: string | null }>) {
+	public resolveWebviewView(webviewView: vscode.WebviewView, ctx: vscode.WebviewViewResolveContext<OneMoreCoffeeState>) {
 		this.view = webviewView.webview;
 		
 		webviewView.webview.options = {
 			enableScripts: true
 		};
-		this._coffeesCountToday = ctx.state?.coffeesToday || 0;
-		this._coffeesCountInYear = ctx.state?.coffeesInYear || 0;
-		this._date = ctx.state?.date || null;
+		this._state = ctx.state ?? this._state;
 
 		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
@@ -78,11 +79,11 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 				</head>
 				<body>
 					<main>
-						<h1>Coffees brewed today: <strong class="today-counting-coffees">${this._coffeesCountToday}</strong></h1>
+						<h1>Coffees brewed today: <strong class="today-counting-coffees">${this._state.coffeesInYear}</strong></h1>
 						<img alt="First coffee icon" src="https://www.gifcen.com/wp-content/uploads/2022/08/coffee-gif.gif" />
 						<span>
 							<p>Coffees brewed in ${new Date().getFullYear()}: 
-								<strong class="year-counting-coffees">${this._coffeesCountInYear}</strong>
+								<strong class="year-counting-coffees">${this._state.coffeesToday}</strong>
 							</p>
 						</span>
 						<button class='button add-coffee'>
@@ -91,7 +92,7 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 					</main>
 					
 					<script src="${scriptMain}"></script>
-					
+
 					${script || ""}
 				</body>
 			</html>
@@ -99,33 +100,33 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	public incrementCoffee() {
-		this._coffeesCountInYear = this._coffeesCountInYear + 1;
-		this._coffeesCountToday = this._coffeesCountToday + 1;
-		if (!this._date) {
-			this._date = new Date().toISOString();
+		this._state.coffeesToday = this._state.coffeesToday + 1;
+		this._state.coffeesInYear = this._state.coffeesInYear + 1;
+		if (!this._state.date) {
+			this._state.date = new Date().toISOString();
 		}
 	}
 
 	public resetIfADayHasPassed() {
 		const today = new Date();
-		if (!this._date || !this.view) {
+		if (!this._state.date || !this.view) {
 			return;
 		}
-		if (today.getDay() !== new Date(this._date).getDay()) {
-			this._coffeesCountToday = 0;
+		if (today.getDay() !== new Date(this._state.date).getDay()) {
+			this._state.coffeesInYear = 0;
 			this.view.html = this._getHtmlForWebview(this.view, `
-				<script>
-					vscode.setState({ coffeesToday: 0, coffeesInYear: ${this._coffeesCountInYear}, date: "${this._date}" });
-				</script>
-			`);
-		}
+			<script>
+				vscode.setState({ coffeesToday: 0, coffeesInYear: ${this._state.coffeesToday}, date: "${this._state.date}" });
+			</script>
+		`);		
+	}
 	}
 
 	public resetIfAYearHasPassed() {
-		if (!this._date) {
+		if (!this._state.date) {
 			return;
 		}
-		if (new Date().getFullYear() !== new Date(this._date).getFullYear()) {
+		if (new Date().getFullYear() !== new Date(this._state.date).getFullYear()) {
 			this.resetAll();
 		}
 	}
@@ -134,12 +135,12 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 		if (!this.view) {
 			return;
 		};
-		this._coffeesCountInYear = 0;
-		this._coffeesCountToday = 0;
+		this._state.coffeesToday = 0;
+		this._state.coffeesInYear = 0;
 		this.view.html = this._getHtmlForWebview(this.view, `
-			<script>
-				vscode.setState({ coffeesToday: 0, coffeesInYear: 0, date: null });
-			</script>
-		`);
+		<script>
+			vscode.setState({ coffeesToday: 0, coffeesInYear: 0, date: null });
+		</script>
+	`);	
 	}
 }
