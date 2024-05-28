@@ -5,8 +5,12 @@ const VIEWS = {
 	'oneMoreCoffee': 'coffees-count'
 };
 
+const STATE_KEYS = {
+	'oneMoreCoffee': 'oneMoreCoffee'
+};
+
 export function activate(context: vscode.ExtensionContext) {
-	const provider = new CoffeesViewProvider(context.extensionUri);
+	const provider = new CoffeesViewProvider(context.extensionUri, context.globalState);
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(CoffeesViewProvider.viewType, provider, {
@@ -16,55 +20,52 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	provider.view?.onDidReceiveMessage(message => {
-		switch (message.command) {
-			case 'incrementCoffee':
-				provider.incrementCoffee();
-		}
-	});
-
 	context.subscriptions.push(vscode.commands.registerCommand('one-more-coffee.reset-count', () => {
 		provider.resetAll();
 	}));
 }
 
 class CoffeesViewProvider implements vscode.WebviewViewProvider {
-	public view?: vscode.Webview;
 	public static readonly viewType = VIEWS.oneMoreCoffee;
-	private readonly _extensionUri: vscode.Uri;
 
-	private _state: OneMoreCoffeeState = {
-		coffeesToday: 0,
-		coffeesInYear: 0,
-		date: null
-	};
+	public _view?: vscode.Webview;
+	private _disposables: vscode.Disposable[] = [];
 
 	constructor(
-		extensionUri: vscode.Uri
-	) {
-		this._extensionUri = extensionUri;
-	}
+		private readonly _extensionUri: vscode.Uri,
+		private readonly globalState: vscode.ExtensionContext['globalState']
+	) {}
 
-	public resolveWebviewView(webviewView: vscode.WebviewView, ctx: vscode.WebviewViewResolveContext<OneMoreCoffeeState>) {
-		this.view = webviewView.webview;
-		
-		webviewView.webview.options = {
+	public resolveWebviewView(webviewView: vscode.WebviewView) {
+		this._view = webviewView.webview;
+		this._view.options = {
 			enableScripts: true
 		};
-		this._state = ctx.state ?? this._state;
 
-		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+		this._view.html = this._getHtmlForWebview(this._view);
 
 		this.resetIfADayHasPassed();
 		this.resetIfAYearHasPassed();
+		
+		this._view?.onDidReceiveMessage(message => {
+			switch (message.command) {
+				case 'incrementCoffee':
+					this.incrementCoffee();
+				}
+			},
+			undefined,
+			this._disposables
+		);
 	}
 
-	private _getHtmlForWebview(webview: vscode.Webview, script?: string) {
+	private _getHtmlForWebview(webview: vscode.Webview) {
 		const scriptMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'js', 'main.js');
 		const scriptMain = webview.asWebviewUri(scriptMainPath);
 		
 		const stylesMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'styles.css');
 		const stylesMain = webview.asWebviewUri(stylesMainPath);
+
+		const state = this._getState();
 
 		return `
 			<!DOCTYPE html>
@@ -79,11 +80,11 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 				</head>
 				<body>
 					<main>
-						<h1>Coffees brewed today: <strong class="today-counting-coffees">${this._state.coffeesInYear}</strong></h1>
+						<h1>Coffees brewed today: <strong class="today-counting-coffees">${state.coffeesInYear}</strong></h1>
 						<img alt="First coffee icon" src="https://www.gifcen.com/wp-content/uploads/2022/08/coffee-gif.gif" />
 						<span>
 							<p>Coffees brewed in ${new Date().getFullYear()}: 
-								<strong class="year-counting-coffees">${this._state.coffeesToday}</strong>
+								<strong class="year-counting-coffees">${state.coffeesToday}</strong>
 							</p>
 						</span>
 						<button class='button add-coffee'>
@@ -92,55 +93,85 @@ class CoffeesViewProvider implements vscode.WebviewViewProvider {
 					</main>
 					
 					<script src="${scriptMain}"></script>
-
-					${script || ""}
 				</body>
 			</html>
 		`;
 	}
 
 	public incrementCoffee() {
-		this._state.coffeesToday = this._state.coffeesToday + 1;
-		this._state.coffeesInYear = this._state.coffeesInYear + 1;
-		if (!this._state.date) {
-			this._state.date = new Date().toISOString();
+		const currentState = this._getState();
+		const newState: OneMoreCoffeeState = {
+			coffeesInYear: currentState.coffeesInYear + 1,
+			coffeesToday: currentState.coffeesToday + 1,
+		};
+		if (!currentState.date) {
+			newState.date = new Date().toISOString();
 		}
+
+		this._updateState(newState);
+
+		this._view!.html = this._getHtmlForWebview(this._view!);	
 	}
 
 	public resetIfADayHasPassed() {
-		const today = new Date();
-		if (!this._state.date || !this.view) {
+		const currentState = this._getState();
+
+		if (!currentState.date || !this._view) {
 			return;
 		}
-		if (today.getDay() !== new Date(this._state.date).getDay()) {
-			this._state.coffeesInYear = 0;
-			this.view.html = this._getHtmlForWebview(this.view, `
-				<script>
-					vscode.setState({ coffeesToday: 0, coffeesInYear: ${this._state.coffeesInYear}, date: "${this._state.date}" });
-				</script>
-			`);		
-	}
+
+		const today = new Date();
+		const aDayHasPassed = today.getDay() > new Date(currentState.date).getDay();
+		if (!aDayHasPassed) {
+			return;
+		}			
+
+		this._updateState({
+			coffeesToday: 0
+		});
+
+		this._view.html = this._getHtmlForWebview(this._view);		
 	}
 
 	public resetIfAYearHasPassed() {
-		if (!this._state.date) {
+		const currentState = this._getState();
+		if (!currentState.date) {
 			return;
 		}
-		if (new Date().getFullYear() !== new Date(this._state.date).getFullYear()) {
-			this.resetAll();
+
+		const aYearHasPassed = new Date().getFullYear() !== new Date(currentState.date).getFullYear();
+		if (!aYearHasPassed) {
+			return;
 		}
+			
+		this.resetAll();
 	}
 
 	public resetAll() {
-		if (!this.view) {
+		if (!this._view) {
 			return;
 		};
-		this._state.coffeesToday = 0;
-		this._state.coffeesInYear = 0;
-		this.view.html = this._getHtmlForWebview(this.view, `
-			<script>
-				vscode.setState({ coffeesToday: 0, coffeesInYear: 0, date: null });
-			</script>
-		`);	
+
+		this._updateState({
+			coffeesInYear: 0,
+			coffeesToday: 0,
+			date: undefined
+		});
+
+		this._view.html = this._getHtmlForWebview(this._view);	
+	}
+
+	private _getState(): OneMoreCoffeeState {
+		return this.globalState.get(STATE_KEYS.oneMoreCoffee) ?? {
+			coffeesInYear: 0,
+			coffeesToday: 0,
+		};
+	} 
+
+	private _updateState(state: Partial<OneMoreCoffeeState>) {
+		this.globalState.update(STATE_KEYS.oneMoreCoffee, {
+			...this._getState(),
+			...state,
+		});
 	}
 }
