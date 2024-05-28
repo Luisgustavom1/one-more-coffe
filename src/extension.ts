@@ -1,177 +1,173 @@
 import * as vscode from 'vscode';
 import { OneMoreCoffeeState } from './model';
+import { OneMoreCoffeeStateStorage } from './storage';
 
 const VIEWS = {
-	'oneMoreCoffee': 'coffees-count'
-};
-
-const STATE_KEYS = {
-	'oneMoreCoffee': 'oneMoreCoffee'
+  'oneMoreCoffee': 'coffees-count'
 };
 
 export function activate(context: vscode.ExtensionContext) {
-	const provider = new CoffeesViewProvider(context.extensionUri, context.globalState);
+  const storage = new OneMoreCoffeeStateStorage(context.globalState);
 
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(CoffeesViewProvider.viewType, provider, {
-			webviewOptions: {
-				retainContextWhenHidden: true
-			}
-		})
-	);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(CoffeesViewProvider.viewType, {
+      resolveWebviewView: (webviewView) => {
+        CoffeesViewProvider.init(context.extensionUri, webviewView, storage);
+      }
+    }, {
+      webviewOptions: {
+        retainContextWhenHidden: true,
+      }
+    })
+  );
 
-	context.subscriptions.push(vscode.commands.registerCommand('one-more-coffee.reset-count', () => {
-		provider.resetAll();
-	}));
+  context.subscriptions.push(vscode.commands.registerCommand('one-more-coffee.reset-count', () => {
+    CoffeesViewProvider.resetAll();
+  }));
 }
 
-class CoffeesViewProvider implements vscode.WebviewViewProvider {
-	public static readonly viewType = VIEWS.oneMoreCoffee;
+class CoffeesViewProvider {
+  public static readonly viewType = VIEWS.oneMoreCoffee;
 
-	public _view?: vscode.Webview;
-	private _disposables: vscode.Disposable[] = [];
+  private static _provider: CoffeesViewProvider | undefined;
 
-	constructor(
+  private _disposables: vscode.Disposable[] = [];
+
+  constructor(
 		private readonly _extensionUri: vscode.Uri,
-		private readonly globalState: vscode.ExtensionContext['globalState']
-	) {}
-
-	public resolveWebviewView(webviewView: vscode.WebviewView) {
-		this._view = webviewView.webview;
+		private readonly _view: vscode.Webview,
+		private readonly _storage: OneMoreCoffeeStateStorage,
+  ) {
 		this._view.options = {
-			enableScripts: true
+			enableScripts: true,
 		};
+		this._update();
 
-		this._view.html = this._getHtmlForWebview(this._view);
+    this._resetIfADayHasPassed();
+    this._resetIfAYearHasPassed();
+    this._setupCommands();
+  }
 
-		this.resetIfADayHasPassed();
-		this.resetIfAYearHasPassed();
-		
-		this._view?.onDidReceiveMessage(message => {
-			switch (message.command) {
-				case 'incrementCoffee':
-					this.incrementCoffee();
-				}
-			},
-			undefined,
-			this._disposables
-		);
-	}
+  static init(extensionUri: vscode.Uri, view: vscode.WebviewView, storage: OneMoreCoffeeStateStorage) {
+    this._provider = new CoffeesViewProvider(extensionUri, view.webview, storage);
+  }
 
-	private _getHtmlForWebview(webview: vscode.Webview) {
-		const scriptMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'js', 'main.js');
-		const scriptMain = webview.asWebviewUri(scriptMainPath);
-		
-		const stylesMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'styles.css');
-		const stylesMain = webview.asWebviewUri(stylesMainPath);
+  private _setupCommands() {
+    this._view.onDidReceiveMessage(message => {
+      switch (message.command) {
+        case 'incrementCoffee':
+          this._incrementCoffee();
+        }
+      },
+      undefined,
+      this._disposables
+    );
+  }
 
-		const state = this._getState();
+  private _getHtmlForWebview(webview: vscode.Webview) {
+    const scriptMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'js', 'main.js');
+    const scriptMain = webview.asWebviewUri(scriptMainPath);
+    
+    const stylesMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'styles.css');
+    const stylesMain = webview.asWebviewUri(stylesMainPath);
 
-		return `
-			<!DOCTYPE html>
-				<html lang="en">
-				<head>
-					<meta charset="UTF-8">
+    const state = this._storage.get();
 
-					<meta name="viewport" content="width=device-width, initial-scale=1.0">
-					<link href="${stylesMain}" rel="stylesheet">
+    return `
+      <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
 
-					<title>Coffees count</title>
-				</head>
-				<body>
-					<main>
-						<h1>Coffees brewed today: <strong class="today-counting-coffees">${state.coffeesInYear}</strong></h1>
-						<img alt="First coffee icon" src="https://www.gifcen.com/wp-content/uploads/2022/08/coffee-gif.gif" />
-						<span>
-							<p>Coffees brewed in ${new Date().getFullYear()}: 
-								<strong class="year-counting-coffees">${state.coffeesToday}</strong>
-							</p>
-						</span>
-						<button class='button add-coffee'>
-							Drink one more coffee
-						</button>
-					</main>
-					
-					<script src="${scriptMain}"></script>
-				</body>
-			</html>
-		`;
-	}
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link href="${stylesMain}" rel="stylesheet">
 
-	public incrementCoffee() {
-		const currentState = this._getState();
-		const newState: OneMoreCoffeeState = {
-			coffeesInYear: currentState.coffeesInYear + 1,
-			coffeesToday: currentState.coffeesToday + 1,
-		};
-		if (!currentState.date) {
-			newState.date = new Date().toISOString();
-		}
+          <title>Coffees count</title>
+        </head>
+        <body>
+          <main>
+            <h1>Coffees brewed today: <strong class="today-counting-coffees">${state.coffeesToday}</strong></h1>
+            <img alt="First coffee icon" src="https://www.gifcen.com/wp-content/uploads/2022/08/coffee-gif.gif" />
+            <span>
+              <p>Coffees brewed in ${new Date().getFullYear()}: 
+                <strong class="year-counting-coffees">${state.coffeesInYear}</strong>
+              </p>
+            </span>
+            <button class='button add-coffee'>
+              Drink one more coffee
+            </button>
+          </main>
+          
+          <script src="${scriptMain}"></script>
+        </body>
+      </html>
+    `;
+  }
 
-		this._updateState(newState);
+  public _incrementCoffee() {
+    const currentState = this._storage.get();
+    const newState: OneMoreCoffeeState = {
+      coffeesInYear: currentState.coffeesInYear + 1,
+      coffeesToday: currentState.coffeesToday + 1,
+    };
+    if (!currentState.date) {
+      newState.date = new Date().toISOString();
+    }
 
-		this._view!.html = this._getHtmlForWebview(this._view!);	
-	}
+    this._storage.update(newState);
 
-	public resetIfADayHasPassed() {
-		const currentState = this._getState();
+    this._update();
+  }
 
-		if (!currentState.date || !this._view) {
-			return;
-		}
+  private _resetIfADayHasPassed() {
+    const currentState = this._storage.get();
+    if (!currentState.date) {
+      return;
+    }
 
-		const today = new Date();
-		const aDayHasPassed = today.getDay() > new Date(currentState.date).getDay();
-		if (!aDayHasPassed) {
-			return;
-		}			
+    const today = new Date();
+    const aDayHasPassed = today.getDay() > new Date(currentState.date).getDay();
+    if (!aDayHasPassed) {
+      return;
+    }     
 
-		this._updateState({
-			coffeesToday: 0
-		});
-
-		this._view.html = this._getHtmlForWebview(this._view);		
-	}
-
-	public resetIfAYearHasPassed() {
-		const currentState = this._getState();
-		if (!currentState.date) {
-			return;
-		}
-
-		const aYearHasPassed = new Date().getFullYear() !== new Date(currentState.date).getFullYear();
-		if (!aYearHasPassed) {
-			return;
-		}
-			
-		this.resetAll();
-	}
-
-	public resetAll() {
-		if (!this._view) {
-			return;
-		};
-
-		this._updateState({
-			coffeesInYear: 0,
-			coffeesToday: 0,
+		this._storage.update({
+      coffeesToday: 0,
 			date: undefined
-		});
+    });
 
-		this._view.html = this._getHtmlForWebview(this._view);	
-	}
+    this._update();
+  }
 
-	private _getState(): OneMoreCoffeeState {
-		return this.globalState.get(STATE_KEYS.oneMoreCoffee) ?? {
-			coffeesInYear: 0,
-			coffeesToday: 0,
-		};
-	} 
+  private _resetIfAYearHasPassed() {
+    const currentState = this._storage.get();
+    if (!currentState.date) {
+      return;
+    }
 
-	private _updateState(state: Partial<OneMoreCoffeeState>) {
-		this.globalState.update(STATE_KEYS.oneMoreCoffee, {
-			...this._getState(),
-			...state,
-		});
-	}
+    const aYearHasPassed = new Date().getFullYear() !== new Date(currentState.date).getFullYear();
+    if (!aYearHasPassed) {
+      return;
+    }
+      
+    CoffeesViewProvider.resetAll();
+  }
+
+  private _update() {
+    this._view.html = this._getHtmlForWebview(this._view);
+  }
+
+  static resetAll() {
+    if (!this._provider) {
+      return;
+    }
+
+    this._provider._storage.update({
+      coffeesInYear: 0,
+      coffeesToday: 0,
+      date: undefined
+    });
+
+    this._provider._update();
+  }
 }
