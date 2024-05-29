@@ -20,9 +20,8 @@ Every year the count of coffees of the year will reset to zero.
 
 ![A image of a coffee with button to count drunk coffee](/media/images/presentation/simple-view.png "Simple view")
 
+![A image of a coffee with button to count drunk coffee](/media/images/presentation/other-view.png "Other view")
+
 #
 If you need to reset the count to zero only press (ctrl + shift + p), write "Reset coffees count" and execute a command, that will reset.
 ![A image of a how command you will execute to reset a count](/media/images/presentation/command-reset.png "Command example")
-
-#
-[Picture credits](https://www.gifcen.com/wp-content/uploads/2022/08/coffee-gif.gif)
