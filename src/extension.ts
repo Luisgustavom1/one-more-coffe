@@ -26,6 +26,19 @@ export function activate(context: vscode.ExtensionContext) {
   }));
 }
 
+const getCOrrectlyImageFromCoffees = (coffeeQuantity: number) => {
+  if (coffeeQuantity > 4) {
+    return 'five-coffees.png';
+  }
+  if (coffeeQuantity > 3) {
+    return 'four-coffees.png';
+  }
+  if (coffeeQuantity > 2) {
+    return 'three-coffee.png';
+  }
+  return 'without-coffee.png';
+};
+
 class CoffeesViewProvider {
   public static readonly viewType = VIEWS.oneMoreCoffee;
 
@@ -40,6 +53,9 @@ class CoffeesViewProvider {
   ) {
 		this._view.options = {
 			enableScripts: true,
+      localResourceRoots: [
+          vscode.Uri.joinPath(_extensionUri, 'media')
+      ]
 		};
 		this._update();
 
@@ -73,6 +89,9 @@ class CoffeesViewProvider {
 
     const state = this._storage.get();
 
+    const coffeePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'images', 'coffee-phases', getCOrrectlyImageFromCoffees(state.coffeesToday));
+    const coffeePathSrc = this._view.asWebviewUri(coffeePath);
+
     return `
       <!DOCTYPE html>
         <html lang="en">
@@ -87,7 +106,7 @@ class CoffeesViewProvider {
         <body>
           <main>
             <h1>Coffees brewed today: <strong class="today-counting-coffees">${state.coffeesToday}</strong></h1>
-            <img alt="First coffee icon" src="https://www.gifcen.com/wp-content/uploads/2022/08/coffee-gif.gif" />
+            <img alt="First coffee icon" src="${coffeePathSrc}" />
             <span>
               <p>Coffees brewed in ${new Date().getFullYear()}: 
                 <strong class="year-counting-coffees">${state.coffeesInYear}</strong>
