@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { OneMoreCoffeeState } from './model';
 import { OneMoreCoffeeStateStorage } from './storage';
 
+const ONE_DAY_IN_MILLISECONDS = 1000 * 60 * 60 * 24;
+
 const VIEWS = {
   'oneMoreCoffee': 'coffees-count'
 };
@@ -145,14 +147,15 @@ class CoffeesViewProvider {
     }
 
     const today = new Date();
-    const aDayHasPassed = today.getDay() > new Date(currentState.date).getDay();
+    const diff = today.getTime() - new Date(currentState.date).getTime()
+    const aDayHasPassed = diff >= ONE_DAY_IN_MILLISECONDS;
     if (!aDayHasPassed) {
       return;
     }     
 
 		this._storage.update({
       coffeesToday: 0,
-			date: undefined
+			date: today.toISOString()
     });
 
     this._update();
@@ -184,7 +187,7 @@ class CoffeesViewProvider {
     this._provider._storage.update({
       coffeesInYear: 0,
       coffeesToday: 0,
-      date: undefined
+      date: new Date().toISOString() 
     });
 
     this._provider._update();
